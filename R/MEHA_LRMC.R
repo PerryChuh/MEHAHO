@@ -1,15 +1,6 @@
-#' Low Rank Matrix Completion Based on MEHA
-#' @description For low rank matrix completion task, suppose that for matrix M of
-#'     n by n, we observe some entries and do not have access to the rest. We
-#'     denote the row features X of n by p and column features as Z of n by p.
-#'     We model the matrix as the sum of a low rank effect \code{Q} and a
-#'     linear combination of the row features and the column features. Denote
-#'     the coefficients of row features X and column features Z by \code{a} and
-#'     \code{b}. \eqn{M = X a 1^T + Z b 1^T + Q}.
-#'     The purpose of this function is to determine the optimal feature
-#'     coefficients (i.e., \code{a} and \code{b}), low rank effect matrix \code{Q}
-#'     and the hyperparameters (penalty strength) \code{x} based on the input
-#'     training and validation sets using MEHA.
+#' Solving low rank matrix completion hyper-parameter selection problem based on MEHA
+#' @description This R function is written to solve the hyper-parameter selection problem of low-rank matrix completion using the MEHA,
+#'     please refer to the listed literature for the specific algorithm and model.
 #' @references Liu, R., Liu, Z., Yao, W., Zeng, S., & Zhang, J. (2024).
 #'     "Rethinking Moreau Envelope for Nonconvex Bi-Level Optimization: A Single-loop and Hessian-free Solution Strategy."
 #'     Available at: https://openreview.net/forum?id=i6EtCiIK4a
@@ -17,26 +8,37 @@
 #'     Gao, L., Ye, J. J., Yin, H., Zeng, S., & Zhang, J. (2022).
 #'     "Value function based difference-of-convex algorithm for bilevel hyperparameter selection problems."
 #'     Available at: https://proceedings.mlr.press/v162/gao22j.html
-#' @param M_val Input matrix for validation with dimensions n by p, with matrix elements equal to 0 at positions other than the validation entries.
-#' @param M_tr Input matrix for training with dimensions n by p, with matrix elements equal to 0 at positions other than the training entries.
-#' @param M_val_index Index of validation entries dimensions n by p, which is a binary matrix where the positions of elements equal to 1 represent the coordinates of the validation entries in the matrix.
-#' @param M_tr_index Index of training entries dimensions n by p, which is a binary matrix where the positions of elements equal to 1 represent the coordinates of the training entries in the matrix.
+#' @param M_val Input matrix for validation with dimensions n by p,
+#'     with matrix elements equal to 0 at positions other than the validation entries.
+#' @param M_tr Input matrix for training with dimensions n by p,
+#'     with matrix elements equal to 0 at positions other than the training entries.
+#' @param M_val_index Index of validation entries dimensions n by p,
+#'     which is a binary matrix where the positions of elements equal to 1
+#'     represent the coordinates of the validation entries in the matrix.
+#' @param M_tr_index Index of training entries dimensions n by p,
+#'     which is a binary matrix where the positions of elements equal to 1 represent the coordinates of the training entries in the matrix.
 #' @param A Row feature matrix of n by p.
 #' @param B Column feature matrix of n by p.
-#' @param group A vector to describe the feature group information, with each
+#' @param group A vector to describe the feature group information,
+#'     with each
 #'     element representing the specific number of features in each group.
 #'     For example, if the coefficients of dimension 12 are divided into 3 groups which is 6, 3, and 3 dimensions,
-#'     then \code{group=(6,3,3)}. In the case of non-sequential grouping, the permutation matrix can be converted to sequential grouping
-#' @param N Total iterations. Default is 300.
+#'     then \code{group=(6,3,3)}. In the case of non-sequential grouping,
+#'         the permutation matrix can be converted to sequential grouping.
+#' @param N Total iterations. Default is 200.
 #' @param alpha Proximal gradient stepsize of \code{x}. Default is 1e-4.
 #' @param beta Proximal gradient stepsize of \code{a} and \code{b}. Default is 1e-4.
 #' @param eta Proximal gradient stepsize of the proxima \code{theta}. Default is 1e-4.
 #' @param gamma Moreau envelope parameter. Default is 10.
-#' @param c \code{\underline{c}} in MEHA, which is used to generate the penalty parameter \code{c_k} in LV-HBA by \code{c_k = \underline{c}(k+1)^p}.
+#' @param c \code{\underline{c}} in MEHA,
+#'     which is used to generate the penalty parameter \code{c_k} in LV-HBA by \code{c_k = \underline{c}(k+1)^power}.
 #'     Default is 2.
-#' @param c_p The index in \code{c_k = \underline{c}(k+1)^p}. Default is 0.48.
-#' @param tol Tolerance. IF \eqn{|x^{k + 1} - x^{k}|/|x^{k}| < tol}, then terminate the iteration, where \eqn{x^k} represents the upper-level variable.
-#' @param auto_tuning When alpha, beta, eta are fixed, whether an auto-hyperparameter-tuning is needed.
+#' @param power The power exponent in \eqn{c_k = \underline{c}(k+1)^{power}}. Default is 0.48.
+#' @param tol Tolerance. IF \eqn{|(x^{k + 1}, y^{k + 1}) - (x^{k}, y^k)|/\sqrt{1+|(x^{k}, y^k)|^2} < tol},
+#'     then terminate the iteration, where \eqn{x^k} represents the upper-level variable, \eqn{y^k} represents the lower-level variable.
+#'     Default is 0.05.
+#' @param auto_tuning When alpha, beta,
+#'     eta are fixed, whether an auto-hyperparameter-tuning is needed.
 #'     Default is \code{FALSE}.
 #' @param temperature Temperature of simulating annealing method for auto-hyperparameter-tuning.
 #'     Default is 0.1.
@@ -51,17 +53,11 @@
 #'   \item{a}{Row feature coefficient.}
 #'   \item{b}{Column feature coefficient.}
 #'   \item{Q}{low rank effect matrix.}
-#'   \item{theta_a}{The moreau envelope parameter in MEHA, which is of the same scale as variable a}
-#'   \item{theta_b}{The moreau envelope parameter in MEHA, which is of the same scale as variable b}
-#'   \item{theta_Q}{The moreau envelope parameter in MEHA, which is of the same scale as variable Q}
-#'   \item{Xconv}{Describe the relative convergence situation of sequence x generated by MEHA,
-#'       which is computed by \eqn{||x^{k+1}-x^k|| / ||x^k||} based on l2-norm.}
-#'   \item{Yconv}{Describe the relative convergence situation of sequence y generated by MEHA,
-#'       which is computed by \eqn{||y^{k+1}-y^k|| / ||y^k||} based on l2-norm.}
-#'   \item{Thetaconv}{Describe the relative convergence situation of sequence theta generated by MEHA,
-#'       which is computed by \eqn{||theta^{k+1}-theta^k|| / ||theta^k||} based on l2-norm.}
-#'   \item{Fseq}{The upper function value sequence generated by the iteration based on validation set.}
-#'
+#'   \item{X_seq}{A list. Describe the sequence x generated by MEHA in the iterative process.}
+#'   \item{a_seq}{A list. Describe the sequence a generated by MEHA in the iterative process.}
+#'   \item{b_seq}{A list. Describe the sequence b generated by MEHA in the iterative process.}
+#'   \item{Q_seq}{A list. Describe the sequence Q generated by MEHA in the iterative process.}
+#'   \item{F_seq}{The upper function value sequence generated in the iterative process based on validation set.}
 #'
 #' @export
 #'
@@ -69,13 +65,13 @@
 
 MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
                      A, B, group, N = 200, alpha = 1e-4, beta = 1e-4, eta = 1e-4,
-                     gamma = 10, c = 2, c_p = 0.48, tol = 0.2, auto_tuning = FALSE,
+                     gamma = 10, c = 2, power = 0.48, tol = 0.05, auto_tuning = FALSE,
                      temperature = 0.1){
 
   library(progress)
   library(truncnorm)
 
-  main_fun <- function(M_val, M_tr, M_val_index, M_tr_index, A, B, group, N, alpha, beta, eta, gamma, c, c_p, tol){
+  main_fun <- function(M_val, M_tr, M_val_index, M_tr_index, A, B, group, N, alpha, beta, eta, gamma, c, power, tol){
 
     G_num = dim(group)[1] # The total number of groups
     n = dim(M_val_index)[1]
@@ -303,11 +299,15 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
     }
 
 
-    # Array to store the results
-    arrF = numeric(N) # F(x^{k+1},y^{k+1})
-    res1 = numeric(N) #||x^{k+1}-x^k|| / ||x^k||
-    res2 = numeric(N) #||y^{k+1}-y^k|| / ||y^k||
-    res3 = numeric(N) #||theta^{k+1}-theta^k|| / ||theta^k||
+    # Store the results
+    X_seq = list()
+    Y_a_seq = list()
+    Y_b_seq = list()
+    Y_Q_seq = list()
+    Theta_a_seq = list()
+    Theta_b_seq = list()
+    Theta_Q_seq = list()
+    F_seq = numeric(N)
 
     # Iteration
     for (k in 1:N) {
@@ -319,7 +319,7 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
       theta_bk = theta_b
       theta_Qk = theta_Q
 
-      ck = c*(k)^c_p
+      ck = c*(k)^power
       theta_a = prox_eta_a(x, a, b, Q, theta_a, theta_b, theta_Q)
       theta_b = prox_eta_b(x, a, b, Q, theta_a, theta_b, theta_Q)
       theta_Q = prox_eta_Q(x, a, b, Q, theta_a, theta_b, theta_Q)
@@ -329,34 +329,49 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
       x = pmax(x - alpha * dkx,e0_2g1)
 
       dka = (1/ck) * F_a(x, a, b, Q) + f_a(x, a, b, Q) - (a - theta_a)/gamma
-
       dkb = (1/ck) * F_b(x, a, b, Q) + f_b(x, a, b, Q) - (b - theta_b)/gamma
-
       dkQ = (1/ck) * F_Q(x, a, b, Q) + f_Q(x, a, b, Q) - (Q - theta_Q)/gamma
 
 
       a = prox_beta_a(x, a, b, Q, dka, dkb, dkQ)
-
       b = prox_beta_b(x, a, b, Q, dka, dkb, dkQ)
-
       Q = prox_beta_Q(x, a, b, Q, dka, dkb, dkQ)
 
 
-      # Convergence checking sequence
-      res1[k] = norm(x - xk , "2") / norm(xk, "2")
-      res2[k] = (norm(a - ak, "2") + norm(b - bk, "2") + norm(Q - Qk, "F")) / (norm(a, "2") + norm(b, "2") + norm(Q, "F"))
-      res3[k] = (norm(theta_a - theta_ak, "2") + norm(theta_b - theta_bk, "2") + norm(theta_Q - theta_Qk, "F")) / (norm(theta_a, "2") + norm(theta_b, "2") + norm(theta_Q, "F"))
-      arrF[k] = up_fun(x, a, b, Q)
-      if (res1[k] < tol) {
+      X_seq[[k]] = x
+      Y_a_seq[[k]] = a
+      Y_b_seq[[k]] = b
+      Y_Q_seq[[k]] = Q
+      Theta_a_seq[[k]] = theta_a
+      Theta_b_seq[[k]] = theta_b
+      Theta_Q_seq[[k]] = theta_Q
+      F_seq[k] = up_fun(x, a, b, Q)
+
+      # conv_criterion =
+      #   sqrt( norm(x - xk , "2")^2 +
+      #           norm(a - ak, "2")^2 + norm(b - bk, "2")^2 + norm(Q - Qk, "F")^2 +
+      #           norm(theta_a - theta_ak, "2")^2 + norm(theta_b - theta_bk, "2")^2 + norm(theta_Q - theta_Qk, "F")^2 )
+      # / sqrt( 1 + norm(xk , "2")^2 +
+      #           norm(ak, "2")^2 + norm(bk, "2")^2 + norm(Qk, "F")^2 +
+      #           norm(theta_ak, "2")^2 + norm(theta_bk, "2")^2 + norm(theta_Qk, "F")^2 )
+      conv_criterion =
+        sqrt( norm(x - xk , "2")^2 + norm(a - ak, "2")^2 + norm(b - bk, "2")^2 + norm(Q - Qk, "F")^2 ) / sqrt( 1 + norm(xk , "2")^2 + norm(ak, "2")^2 + norm(bk, "2")^2 + norm(Qk, "F")^2)
+
+
+      if (!is.na(conv_criterion) && conv_criterion < tol) {
         if(auto_tuning == FALSE){
           cat("Terminating at iteration", k, "\n")
         }
+        F_seq = F_seq[1:k]
         break
       }
     }
 
-    return(list(x = x, a = a, b = b, Q = Q, theta_a = theta_a,theta_B = theta_b, theta_Q = theta_Q, Xconv = res1, Yconv = res2, Thetaconv = res3, Fseq = arrF))
-
+    # return(list(x = x, a = a, b = b, Q = Q, theta_a = theta_a, theta_B = theta_b, theta_Q = theta_Q,
+    #             X_seq = X_seq, Y_a_seq = Y_a_seq, Y_b_seq = Y_b_seq, Y_Q_seq = Y_Q_seq, Theta_seq= Theta_seq,
+    #             Theta_a_seq = Theta_a_seq, Theta_b_seq = Theta_b_seq, Theta_Q_seq = Theta_Q_seq,
+    #             F_seq = F_seq))
+    return(list(x = x, a = a, b = b, Q = Q, X_seq = X_seq, a_seq = Y_a_seq, b_seq = Y_b_seq, Q_seq = Y_Q_seq, F_seq = F_seq))
 
   }
 
@@ -381,8 +396,8 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
     beta.seq[1] <- beta
     eta.seq[1] <- eta
 
-    result <- main_fun(M_val, M_tr, M_val_index, M_tr_index, A, B, group, N, alpha = alpha.seq[1], beta = beta.seq[1], eta = eta.seq[1], gamma = gamma, c = c, c_p = c_p, tol = tol)
-    value[1] <- result$Fseq[order(result$Fseq, decreasing = FALSE)[1]]
+    result <- main_fun(M_val, M_tr, M_val_index, M_tr_index, A, B, group, N, alpha = alpha.seq[1], beta = beta.seq[1], eta = eta.seq[1], gamma = gamma, c = c, power = power, tol = tol)
+    value[1] <- result$F_seq[order(result$F_seq, decreasing = FALSE)[1]]
 
 
     set.seed(123)
@@ -391,8 +406,8 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
       alpha.seq[j] <- rtruncnorm(n = 1, a = 0, mean = alpha.seq[j-1], sd = 1e-3)
       beta.seq[j] <- rtruncnorm(n = 1, a = 0, mean = beta.seq[j-1], sd = 1e-6)
       eta.seq[j] <- rtruncnorm(n = 1, a = 0, mean = eta.seq[j-1], sd = 1e-6)
-      result <-  main_fun(M_val, M_tr, M_val_index, M_tr_index, A, B, group, N, alpha = alpha.seq[j], beta = beta.seq[j], eta = eta.seq[j],gamma = gamma, c = c, c_p = c_p, tol = tol)
-      candidate <- result$Fseq[order(result$Fseq, decreasing = FALSE)[1]]
+      result <-  main_fun(M_val, M_tr, M_val_index, M_tr_index, A, B, group, N, alpha = alpha.seq[j], beta = beta.seq[j], eta = eta.seq[j],gamma = gamma, c = c, power = power, tol = tol)
+      candidate <- result$F_seq[order(result$F_seq, decreasing = FALSE)[1]]
       if(candidate > value[j-1] & runif(n = 1) > exp((value[j-1]-candidate)/T)){
         value[j] <- value[j-1]
       } else {
@@ -407,11 +422,11 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
     cat("\n", "Auto-hyperparameters-tuning is done.")
     cat("\nFinal hyper-paramaters (alpha,beta,eta) are chosen as:",c(alpha.seq[opt_index], beta.seq[opt_index], eta.seq[opt_index]))
 
-    return(main_fun(M_val, M_tr, M_val_index, M_tr_index, A, B, group, N, alpha = alpha.seq[opt_index], beta = beta.seq[opt_index], eta = eta.seq[opt_index],gamma = gamma, c = c, c_p = c_p, tol = tol))
+    return(main_fun(M_val, M_tr, M_val_index, M_tr_index, A, B, group, N, alpha = alpha.seq[opt_index], beta = beta.seq[opt_index], eta = eta.seq[opt_index],gamma = gamma, c = c, power = power, tol = tol))
 
   }
   else{
-    main_fun(M_val, M_tr, M_val_index, M_tr_index, A, B, group, N, alpha, beta, eta,gamma = gamma, c = c, c_p = c_p, tol = tol)
+    main_fun(M_val, M_tr, M_val_index, M_tr_index, A, B, group, N, alpha, beta, eta,gamma = gamma, c = c, power = power, tol = tol)
   }
 
 
