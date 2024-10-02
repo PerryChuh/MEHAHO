@@ -238,7 +238,8 @@ LVHBA_SVM <- function(features,
       }
       return((1/K)*result)
     }
-    # True upper-level objective function
+
+    # Upper-level objective function
     up_fun_real = function(lambda,w_bar, w, c, xi){
       result = 0
       for (t in 1:K) {

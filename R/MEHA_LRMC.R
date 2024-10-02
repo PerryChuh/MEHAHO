@@ -61,7 +61,49 @@
 #'
 #' @export
 #'
-#'
+#' @examples
+#' # data and group
+#' group = rbind(3,3,3,3,3,3,3,3,3,3,3,3)
+#' n = 60
+#' p = sum(group)
+#' M_tr_index = matrix(0, n, n)
+#' M_val_index = matrix(0, n, n)
+#' M_test_index = matrix(0, n, n)
+
+#' all_indices = expand.grid(1:n, 1:n)
+# set.seed(123)
+#' shuffled_indices = all_indices[sample(1:(n*n)), ]
+# 设置每个矩阵中1的个数
+#' num_ones_M_tr <- 500
+#' num_ones_M_val <- 500
+#' num_ones_M_test <- (n*n) - num_ones_M_tr - num_ones_M_val
+
+#' M_tr_index[as.matrix(shuffled_indices[1:num_ones_M_tr, ])] <- 1
+# 分配1到第二个矩阵
+#' M_val_index[as.matrix(shuffled_indices[(num_ones_M_tr + 1):(num_ones_M_tr + num_ones_M_val), ])] <- 1
+# 分配剩余的1到第三个矩阵
+#' M_test_index[as.matrix(shuffled_indices[(num_ones_M_tr + num_ones_M_val + 1):(n*n), ])] <- 1
+
+#' a_0 = rbind(1,1,1,2,2,2,3,3,3,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+#' b_0 = rbind(1,1,1,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+#' u = matrix(rnorm(n), nrow = n)
+#' v = matrix(rnorm(n), nrow = n)
+#' Q_0 = u %*% t(v)
+#' A =  matrix(rnorm(n*p), nrow = n, ncol = p)
+#' B =  matrix(rnorm(n*p), nrow = n, ncol = p)
+#' e_n = matrix(rep(1),nrow = n)
+#' epsilon <- matrix(rnorm(n), n, n)
+#' sigma = 2
+#' M_AB = A %*% a_0 %*% t(e_n) + t(B %*% b_0 %*% t(e_n)) + sigma * epsilon
+#' scale = norm(Q_0,type = "F")/norm(M_AB, type = "F")
+#' M = scale*M_AB + Q_0 + sigma*epsilon
+#' #' M_val = M * M_val_index
+#' M_tr = M * M_tr_index
+#' M_test = M * M_test_index
+
+#' result = MEHA_LRMC(M_val, M_tr,M_test, M_val_index, M_tr_index,M_test_index, A, B, group, 200)
+
+
 
 MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
                      A, B, group, N = 200, alpha = 1e-4, beta = 1e-4, eta = 1e-4,
@@ -80,18 +122,18 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
       return(print("Error: p != sum(group), he grouping condition contradicts the number of features"))
     }
 
-    e_1n = matrix(rep(1), nrow = n)
-    e_1p = matrix(rep(1), nrow = p)
-    E = matrix(rep(1), nrow = n, ncol = n)
-    e0_2g1 = matrix(rep(0), nrow = 2*G_num + 1)
-    e0_g = matrix(rep(0), nrow = G_num)
-    e_0p = matrix(rep(0), nrow = p)
+    ones_n = matrix(rep(1), nrow = n)
+    ones_nn = matrix(rep(1), nrow = n, ncol = n)
+    zeros_2g1 = matrix(rep(0), nrow = 2*G_num + 1)
+    zeros_g = matrix(rep(0), nrow = G_num)
+    zeros_p = matrix(rep(0), nrow = p)
 
     # Initial values
-    a =  0*matrix(rnorm(p), nrow = p)
-    b =  0*matrix(rnorm(p), nrow = p)
-    Q =  0*matrix(rnorm(n*n), nrow = n, ncol = n)
-    x =  matrix(rep(0.01), nrow = 2*G_num + 1)
+    a =  0*matrix(rep(1), nrow = p)
+    b =  0*matrix(rep(1), nrow = p)
+    Q =  0*matrix(rep(1), nrow = n, ncol = n)
+    x =  matrix(rep(0.1), nrow = 2*G_num + 1)
+    x[2*G_num + 1] =  1
     theta_a = a
     theta_b = b
     theta_Q = Q
@@ -99,24 +141,24 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
 
     # Upper objective function
     up_fun = function(x, a, b, Q){
-      result = 0.5*norm( (M_val - A %*% a %*% t(e_1n) - t(B %*% b %*% t(e_1n)) - Q) * M_val_index, type = "F")^2
+      result = 0.5*norm( (M_val - A %*% a %*% t(ones_n) - t(B %*% b %*% t(ones_n)) - Q) * M_val_index, type = "F")^2
       return(result)
     }
 
     low_fun = function(x, a, b, Q){
-      result = 0.5*norm( (M_tr - A %*% a %*% t(e_1n) - t(B %*% b %*% t(e_1n)) - Q) * M_tr_index, type = "F")^2
+      result = 0.5*norm( (M_tr - A %*% a %*% t(ones_n) - t(B %*% b %*% t(ones_n)) - Q) * M_tr_index, type = "F")^2
       return(result)
     }
 
 
     # Gradient update function for x and y (i.e. a, b and Q)
     F_x = function(x, a, b, Q){
-      result = e0_2g1
+      result = zeros_2g1
       return(result)
     }
 
     F_a = function(x, a, b, Q){
-      result = e_0p
+      result = zeros_p
       for (i in 1:nrow(M_val_index)) {
         for (j in 1:ncol(M_val_index)) {
           if (M_val_index[i, j] == 1) {
@@ -128,7 +170,7 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
     }
 
     F_b = function(x, a, b, Q){
-      result = e_0p
+      result = zeros_p
       for (i in 1:nrow(M_val_index)) {
         for (j in 1:ncol(M_val_index)) {
           if (M_val_index[i, j] == 1) {
@@ -140,11 +182,11 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
     }
 
     F_Q = function(x, a, b, Q){
-      result = 0*E
+      result = 0*ones_nn
       for (i in 1:nrow(M_val_index)) {
         for (j in 1:ncol(M_val_index)) {
           if (M_val_index[i, j] == 1) {
-            result = result + as.numeric((M_val[i, j] - A[i, ] %*% a - B[j, ] %*% b - Q[i,j] ))*(-1*E)
+            result[i,j] = as.numeric((M_val[i, j] - A[i, ] %*% a - B[j, ] %*% b - Q[i,j] ))*(-1)
           }
         }
       }
@@ -154,13 +196,13 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
 
 
     f_x = function(x, a, b, Q){
-      result = e0_2g1
+      result = zeros_2g1
       return(result)
     }
 
 
     f_a = function(x, a, b, Q){
-      result = e_0p
+      result = zeros_p
       for (i in 1:nrow(M_tr_index)) {
         for (j in 1:ncol(M_tr_index)) {
           if (M_tr_index[i, j] == 1) {
@@ -172,7 +214,7 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
     }
 
     f_b = function(x, a, b, Q){
-      result = e_0p
+      result = zeros_p
       for (i in 1:nrow(M_tr_index)) {
         for (j in 1:ncol(M_tr_index)) {
           if (M_tr_index[i, j] == 1) {
@@ -184,11 +226,11 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
     }
 
     f_Q = function(x, a, b, Q){
-      result = 0*E
+      result = 0*ones_nn
       for (i in 1:nrow(M_tr_index)) {
         for (j in 1:ncol(M_tr_index)) {
           if (M_tr_index[i, j] == 1) {
-            result = result + as.numeric((M_tr[i, j] - A[i, ] %*% a - B[j, ] %*% b - Q[i,j] ))*(-1*E)
+            result[i,j] = as.numeric((M_tr[i, j] - A[i, ] %*% a - B[j, ] %*% b - Q[i,j] ))*(-1)
           }
         }
       }
@@ -197,8 +239,8 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
 
 
     g_x = function(x, a, b, Q){
-      resulta = e0_g
-      resultb = e0_g
+      resulta = zeros_g
+      resultb = zeros_g
       for (k in 1:G_num) {
         ak = a[(sum(group[1:k]) - group[k] + 1):sum(group[1:k])]
         resulta[k] = norm( ak ,type = "2")
@@ -207,15 +249,16 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
         bk = b[(sum(group[1:k]) - group[k] + 1):sum(group[1:k])]
         resultb[k] = norm( bk ,type = "2")
       }
-      resultQ = norm( Q ,type = "F")
-      return(rbind(resulta, resultb,resultQ))
+      svd_Q = svd(Q)
+      resultQ = sum(svd_Q$d)
+      return(rbind(resulta, resultb, resultQ))
     }
 
 
     # Proximal operators for theta
     prox_eta_a = function(x, a, b, Q, theta_a, theta_b, theta_Q){
       z_a = theta_a - eta * (f_a(x, theta_a, theta_b, theta_Q) + (theta_a - a) / gamma)
-      result = e_0p
+      result = zeros_p
       for (k in 1:G_num) {
         z_ak = z_a[(sum(group[1:k]) - group[k] + 1):sum(group[1:k])]
         if (eta * x[k] > 0) {
@@ -227,9 +270,9 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
       return(result)
     }
 
-    prox_eta_b = function(xx, a, b, Q, theta_a, theta_b, theta_Q){
+    prox_eta_b = function(x, a, b, Q, theta_a, theta_b, theta_Q){
       z_b = theta_b - eta * (f_b(x, theta_a, theta_b, theta_Q) + (theta_b - b) / gamma)
-      result = e_0p
+      result = zeros_p
       for (k in 1:G_num) {
         z_bk = z_b[(sum(group[1:k]) - group[k] + 1):sum(group[1:k])]
         if (eta * x[k + G_num] > 0) {
@@ -243,14 +286,14 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
 
     prox_eta_Q = function(x, a, b, Q, theta_a, theta_b, theta_Q){
       z_Q = theta_Q - eta * (f_Q(x, theta_a, theta_b, theta_Q) + (theta_Q - Q) / gamma)
-      result = E
-      svd_result = svd(Q)
+      result = ones_nn
+      svd_result = svd(z_Q)
       if (eta * x[2*G_num + 1] > 0) {
-        D = pmax(svd_result$d - beta * x[2*G_num + 1], 0)
+        D = pmax(svd_result$d - eta * x[2*G_num + 1], 0)
+        result = svd_result$u %*% diag(D) %*% t(svd_result$v)
       } else {
-        D = 0*svd_result$d
+        result = z_Q
       }
-      result = svd_result$u %*% diag(D) %*% t(svd_result$v)
       return(result)
     }
 
@@ -258,7 +301,7 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
     # Proximal operators for y
     prox_beta_a = function(x, a, b, Q, dka, dkb, dkQ){
       z_a = a - beta * dka
-      result = e_0p
+      result = zeros_p
       for (k in 1:G_num) {
         z_ak = z_a[(sum(group[1:k]) - group[k] + 1):sum(group[1:k])]
         if (beta * x[k] > 0) {
@@ -273,7 +316,7 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
 
     prox_beta_b = function(x, a, b, Q, dka, dkb, dkQ){
       z_b = b - beta * dkb
-      result = e_0p
+      result = zeros_p
       for (k in 1:G_num){
         z_bk = z_b[(sum(group[1:k]) - group[k] + 1):sum(group[1:k])]
         if (beta * x[k + G_num] > 0) {
@@ -287,14 +330,15 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
 
     prox_beta_Q = function(x, a, b, Q, dka, dkb, dkQ){
       z_Q = Q - beta * dkQ
-      result = E
-      svd_result = svd(Q)
+      result = ones_nn
+      svd_result = svd(z_Q)
       if (beta * x[2*G_num + 1] > 0) {
         D = pmax(svd_result$d - beta * x[2*G_num + 1], 0)
+        result = svd_result$u %*% diag(D) %*% t(svd_result$v)
       } else {
-        D = 0*svd_result$d
+        result = z_Q
       }
-      result = svd_result$u %*% diag(D) %*% t(svd_result$v)
+
       return(result)
     }
 
@@ -326,7 +370,7 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
 
       dkx = (1/ck) * F_x(x, a, b, Q) + f_x(x, a, b, Q) + g_x(x, a, b, Q) - f_x(x, theta_a, theta_b, theta_Q) - g_x(x, theta_a, theta_b, theta_Q)
 
-      x = pmax(x - alpha * dkx,e0_2g1)
+      x = pmax(x - alpha * dkx,zeros_2g1)
 
       dka = (1/ck) * F_a(x, a, b, Q) + f_a(x, a, b, Q) - (a - theta_a)/gamma
       dkb = (1/ck) * F_b(x, a, b, Q) + f_b(x, a, b, Q) - (b - theta_b)/gamma

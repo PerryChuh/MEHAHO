@@ -95,6 +95,40 @@ strengths of low rank effect matrix \code{Q}.}
 This R function is written to solve the hyper-parameter selection problem of low-rank matrix completion using the MEHA,
 please refer to the listed literature for the specific algorithm and model.
 }
+\examples{
+# data and group
+group = rbind(3,3,3,3,3,3,3,3,3,3,3,3)
+n = 60
+p = sum(group)
+M_tr_index = matrix(0, n, n)
+M_val_index = matrix(0, n, n)
+M_test_index = matrix(0, n, n)
+all_indices = expand.grid(1:n, 1:n)
+shuffled_indices = all_indices[sample(1:(n*n)), ]
+num_ones_M_tr <- 500
+num_ones_M_val <- 500
+num_ones_M_test <- (n*n) - num_ones_M_tr - num_ones_M_val
+M_tr_index[as.matrix(shuffled_indices[1:num_ones_M_tr, ])] <- 1
+M_val_index[as.matrix(shuffled_indices[(num_ones_M_tr + 1):(num_ones_M_tr + num_ones_M_val), ])] <- 1
+M_test_index[as.matrix(shuffled_indices[(num_ones_M_tr + num_ones_M_val + 1):(n*n), ])] <- 1
+a_0 = rbind(1,1,1,2,2,2,3,3,3,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+b_0 = rbind(1,1,1,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+u = matrix(rnorm(n), nrow = n)
+v = matrix(rnorm(n), nrow = n)
+Q_0 = u \%*\% t(v)
+A =  matrix(rnorm(n*p), nrow = n, ncol = p)
+B =  matrix(rnorm(n*p), nrow = n, ncol = p)
+e_n = matrix(rep(1),nrow = n)
+epsilon <- matrix(rnorm(n), n, n)
+sigma = 2
+M_AB = A \%*\% a_0 \%*\% t(e_n) + t(B \%*\% b_0 \%*\% t(e_n)) + sigma * epsilon
+scale = norm(Q_0,type = "F")/norm(M_AB, type = "F")
+M = scale*M_AB + Q_0 + sigma*epsilon
+#' M_val = M * M_val_index
+M_tr = M * M_tr_index
+M_test = M * M_test_index
+result = MEHA_LRMC(M_val, M_tr,M_test, M_val_index, M_tr_index,M_test_index, A, B, group, 200)
+}
 \references{
 Liu, R., Liu, Z., Yao, W., Zeng, S., & Zhang, J. (2024).
 "Rethinking Moreau Envelope for Nonconvex Bi-Level Optimization: A Single-loop and Hessian-free Solution Strategy."

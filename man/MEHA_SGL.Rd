@@ -92,8 +92,8 @@ true_beta <- rep(beta_i,3) #true coefficient
 set.seed(123)
 a <- matrix(rnorm(3*N*p), ncol = p)
 epsilon <- matrix(rnorm(3*N), ncol = 1) #residual
-sigma <- norm(a \%*\% true_beta, type = "2") / norm(epsilon, type = "2")
-b <- a \%*\% true_beta + sigma/2 * epsilon
+sigma <- 0.5*norm(a \%*\% true_beta, type = "2") / norm(epsilon, type = "2")
+b <- a \%*\% true_beta + sigma * epsilon
 SNR <- norm(a \%*\% true_beta, type = "2") / norm(b - a \%*\% true_beta,
  type = "2")
 cat("SNR is", SNR) #the signal-to-noise ratio is controlled at 2

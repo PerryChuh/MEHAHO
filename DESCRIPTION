@@ -15,6 +15,11 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 URL: https://github.com/PerryChuh/MEHAHO
+Imports: 
+    quadprog,
+    Matrix,
+    progress,
+    truncnorm
 References: 
     Gao, L., Ye, J. J., Yin, H., Zeng, S., & Zhang, J. (2022).
     "Value function based difference-of-convex algorithm for bilevel hyper-parameter selection problems."
