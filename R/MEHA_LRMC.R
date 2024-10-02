@@ -119,7 +119,7 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
     n = dim(M_val_index)[1]
     p = dim(A)[2] # Dimension of features
     if (p != sum(group)) {
-      return(print("Error: p != sum(group), he grouping condition contradicts the number of features"))
+      stop("Error: p != sum(group), the grouping condition contradicts the number of features")
     }
 
     ones_n = matrix(rep(1), nrow = n)
@@ -141,14 +141,14 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
 
     # Upper objective function
     up_fun = function(x, a, b, Q){
-      result = 0.5*norm( (M_val - A %*% a %*% t(ones_n) - t(B %*% b %*% t(ones_n)) - Q) * M_val_index, type = "F")^2
+      result = 0.5*norm((M_val - A %*% a %*% t(ones_n) - t(B %*% b %*% t(ones_n)) - Q) * M_val_index, type = "F")^2
       return(result)
     }
 
-    low_fun = function(x, a, b, Q){
-      result = 0.5*norm( (M_tr - A %*% a %*% t(ones_n) - t(B %*% b %*% t(ones_n)) - Q) * M_tr_index, type = "F")^2
-      return(result)
-    }
+    # low_fun = function(x, a, b, Q){
+    #   result = 0.5*norm((M_tr - A %*% a %*% t(ones_n) - t(B %*% b %*% t(ones_n)) - Q) * M_tr_index, type = "F")^2
+    #   return(result)
+    # }
 
 
     # Gradient update function for x and y (i.e. a, b and Q)
@@ -370,7 +370,7 @@ MEHA_LRMC = function(M_val, M_tr, M_val_index, M_tr_index,
 
       dkx = (1/ck) * F_x(x, a, b, Q) + f_x(x, a, b, Q) + g_x(x, a, b, Q) - f_x(x, theta_a, theta_b, theta_Q) - g_x(x, theta_a, theta_b, theta_Q)
 
-      x = pmax(x - alpha * dkx,zeros_2g1)
+      x = pmax(x - alpha * dkx, zeros_2g1)
 
       dka = (1/ck) * F_a(x, a, b, Q) + f_a(x, a, b, Q) - (a - theta_a)/gamma
       dkb = (1/ck) * F_b(x, a, b, Q) + f_b(x, a, b, Q) - (b - theta_b)/gamma
