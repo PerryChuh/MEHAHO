@@ -32,7 +32,7 @@ To install the `MEHAHO` package from GitHub, you can use the `devtools` package:
     library(MEHAHO)
     ```
 
-Function usage details can be found in the R package help documentation. You can also adjust the function's architecture to modify hyper-parameters and initial values of the algorithm as needed.
+Function usage details can be found in the R package help documentation. You can also adjust the function's architecture to modify hyper-parameters and initial values of the algorithm in folder `R/` as needed.
 
 ## References
 
